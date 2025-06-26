@@ -47,7 +47,7 @@ url = "https://www.sreality.cz/hledani/pronajem/byty,domy"
 """
 Datová struktura offeru.
 
-Link, Name, Price, Rentier Name, Rentier Phone, Rentier Email, Rentier Company, Description, Details, Location
+Link, Name, Price, Rentier Name, Rentier Phone, Rentier Email, Rentier Company, Description, Details, Location, Date, DateofUnlisting
 
 """
 
@@ -127,7 +127,7 @@ def getOfferDetails(url):
             housingLocation = offerSoup.find_all("section", class_="css-1pg1w3w")[0]
             ahrefs = housingLocation.find_all("a")[0].get("href")
             location = ahrefs[ahrefs.find("=")+1:ahrefs.find("&")].split(",")
-            if location[0] == "stre" or location[0] == "ward":
+            if location[0] == "stre" or location[0] == "ward" or location[0] == "muni":
                 offer_.setLocation(ahrefs)
             else:
                 offer_.setLocation(location)
@@ -167,11 +167,10 @@ def main():
        print("----------------------------\n\n\n\n\n\n")
        for offer in allOffers:
             cur = con.cursor()
-            ahref = "https://www.sreality.cz/" + offer.get("href")
+            ahref = "https://www.sreality.cz" + offer.get("href")
             print(ahref)
             if not cur.execute("SELECT EXISTS(SELECT 1 FROM offers WHERE Link=?);", (ahref,)).fetchone()[0]:
                 offer_=(getOfferDetails(ahref))
-                
                 updateDatabase(cur, offer_.link, offer_.name, offer_.price, offer_.rentierName, offer_.rentierPhone, offer_.rentierEmail, offer_.rentierCompany, offer_.description, offer_.details, offer_.location, offer_.date, dateOfUnlisting)
                 con.commit()
                 print("added!")
@@ -180,7 +179,8 @@ def main():
                 con.commit()
                 print("skipped")
     today = str(datetime.now().date())
-    updateDelist.execute("UPDATE offers SET DateOfUnlisting = ? WHERE DateOfUnlisting = 0;", (today,))
+    updateDelist.execute("UPDATE offers SET DateOfUnlisting = ? WHERE DateOfUnlisting = ?;", (today,0))
+    con.commit()
                 
 if __name__ == '__main__':
     main() 
