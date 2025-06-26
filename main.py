@@ -53,7 +53,6 @@ Link, Name, Price, Rentier Name, Rentier Phone, Rentier Email, Rentier Company, 
 
 
 def updateDatabase(cur, link, name, price, rentierName, rentierPhone, rentierEmail, rentierCompany, description, details, location, date, dateofUnlisting):
-    # Databáze -> kontrolovat, zda tam není dům vícekrát.
     cur.execute("""INSERT OR IGNORE INTO offers (Link, Name, Price, RentierName, RentierPhone, RentierEmail, RentierCompany, Description, Details, Location, Date, DateOfUnlisting) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);""", (link, name, price, rentierName, rentierPhone, rentierEmail, rentierCompany, description, details, str(location), date, dateofUnlisting, ))
 
@@ -62,7 +61,7 @@ def getOfferDetails(url):
     try:
         offerSoup = soup(get(url))
 
-        #Gets name of the offer (always he has)
+        #Gets name of the offer
 
         try:
             name = offerSoup.find_all("h1")[0].text
