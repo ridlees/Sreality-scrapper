@@ -6,6 +6,14 @@ from datetime import datetime
 
 import sqlite3
 
+def get(url):
+    sleep(randint(10,500)/1000)
+    page = r.get(url)
+    return page
+
+def soup(page):
+    return bs(page.content, 'html.parser')
+
 class offer:
     def __init__(self, link):
         self.link = link
@@ -123,31 +131,23 @@ def getOfferDetails(url):
         
         # Gets Housing location
         try:
-            housingLocation = offerSoup.find_all("section", class_="css-1pg1w3w")[0]
+            housingLocation = offerSoup.find_all("section", class_="css-1y11ixe")[0]
             ahrefs = housingLocation.find_all("a")[0].get("href")
             location = ahrefs[ahrefs.find("=")+1:ahrefs.find("&")].split(",")
-            if location[0] == "stre" or location[0] == "ward" or location[0] == "muni":
+            if location[0] == "stre" or location[0] == "ward" or location[0] == "muni" or location[0] == "quar":
                 offer_.setLocation(ahrefs)
             else:
-                offer_.setLocation(location)
+                offer_.setLocation(location[1] + " " + location[0])
         except:
             offer_.setLocation("NaN")
 
+        
         today = datetime.now().date()
         offer_.setDate(str(today))
         
         return offer_
     except:
         print("Error in getting offer details")
-    
-
-def get(url):
-    sleep(randint(10,500)/1000)
-    page = r.get(url)
-    return page
-
-def soup(page):
-    return bs(page.content, 'html.parser')
 
 def main():
     con = sqlite3.connect("offers.db")
