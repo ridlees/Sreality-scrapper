@@ -6,6 +6,9 @@ from datetime import datetime
 
 import sqlite3
 
+from multiprocessing import Pool, freeze_support
+
+
 def get(url):
     sleep(randint(10,500)/1000)
     page = r.get(url)
@@ -63,6 +66,23 @@ Link, Name, Price, Rentier Name, Rentier Phone, Rentier Email, Rentier Company, 
 def updateDatabase(cur, link, name, price, rentierName, rentierPhone, rentierEmail, rentierCompany, description, details, location, date, dateofUnlisting):
     cur.execute("""INSERT OR IGNORE INTO offers (Link, Name, Price, RentierName, RentierPhone, RentierEmail, RentierCompany, Description, Details, Location, Date, DateOfUnlisting) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);""", (link, name, price, rentierName, rentierPhone, rentierEmail, rentierCompany, description, details, str(location), date, dateofUnlisting, ))
+
+def getOffers(index, dateOfUnlisting):
+    con = sqlite3.connect("offers.db")
+    offersPage = soup(get(f"https://www.sreality.cz/hledani/pronajem/byty,domy?strana={index}"))
+    allOffers = offersPage.find_all("ul", class_="MuiGrid2-root MuiGrid2-container MuiGrid2-direction-xs-row css-1fesoy9")[0]
+    allOffers  = allOffers.find_all("a")
+    for offer in allOffers:
+        cur = con.cursor()
+        ahref = "https://www.sreality.cz" + offer.get("href")
+        if not cur.execute("SELECT EXISTS(SELECT 1 FROM offers WHERE Link=?);", (ahref,)).fetchone()[0]:
+            offer_=(getOfferDetails(ahref))
+            updateDatabase(cur, offer_.link, offer_.name, offer_.price, offer_.rentierName, offer_.rentierPhone, offer_.rentierEmail, offer_.rentierCompany, offer_.description, offer_.details, offer_.location, offer_.date, dateOfUnlisting)
+            con.commit()
+        else:
+            cur.execute(f"UPDATE offers SET DateOfUnlisting = ? WHERE Link = ?;", (dateOfUnlisting,ahref,))
+            con.commit()
+        return f"Page {index} is complete"
 
 def getOfferDetails(url):
     offer_ = offer(url)
@@ -156,27 +176,12 @@ def main():
     con.commit()
     dateOfUnlisting = str(datetime.fromtimestamp(0).date())
     sreality = soup(get(url))
-    data = []
+    freeze_support()
     last_page = int(sreality.find_all("li", class_="MuiListItem-root MuiListItem-gutters MuiListItem-padding css-1ydg92w")[-1].text)
-    for i in range(1,  last_page):
-       offersPage = soup(get(f"https://www.sreality.cz/hledani/pronajem/byty,domy?strana={i}"))
-       print(i)
-       allOffers = offersPage.find_all("ul", class_="MuiGrid2-root MuiGrid2-container MuiGrid2-direction-xs-row css-1fesoy9")[0]
-       allOffers  = allOffers.find_all("a")
-       print("----------------------------\n\n\n\n\n\n")
-       for offer in allOffers:
-            cur = con.cursor()
-            ahref = "https://www.sreality.cz" + offer.get("href")
-            print(ahref)
-            if not cur.execute("SELECT EXISTS(SELECT 1 FROM offers WHERE Link=?);", (ahref,)).fetchone()[0]:
-                offer_=(getOfferDetails(ahref))
-                updateDatabase(cur, offer_.link, offer_.name, offer_.price, offer_.rentierName, offer_.rentierPhone, offer_.rentierEmail, offer_.rentierCompany, offer_.description, offer_.details, offer_.location, offer_.date, dateOfUnlisting)
-                con.commit()
-                print("added!")
-            else:
-                cur.execute(f"UPDATE offers SET DateOfUnlisting = ? WHERE Link = ?;", (dateOfUnlisting,ahref,))
-                con.commit()
-                print("skipped")
+    with Pool(processes=10) as pool:
+        results = [pool.apply_async(getOffers, args=(index, dateOfUnlisting)) for index in range(1, last_page)]
+        final_results = [r.get() for r in results]
+        print(final_results)
     today = str(datetime.now().date())
     updateDelist.execute("UPDATE offers SET DateOfUnlisting = ? WHERE DateOfUnlisting = ?;", (today,0))
     con.commit()
