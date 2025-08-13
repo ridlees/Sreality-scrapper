@@ -172,7 +172,9 @@ def getOfferDetails(url):
 def main():
     con = sqlite3.connect("offers.db")
     updateDelist = con.cursor()
-    updateDelist.execute("UPDATE offers SET DateOfUnlisting = 0;")
+    dateOfUnlisting = str(datetime.fromtimestamp(0).date())
+    updateDelist.execute(
+    "UPDATE offers SET DateOfUnlisting = 0 WHERE DateOfUnlisting = ?;",(dateOfUnlisting,))
     con.commit()
     dateOfUnlisting = str(datetime.fromtimestamp(0).date())
     sreality = soup(get(url))
